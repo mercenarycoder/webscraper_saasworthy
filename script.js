@@ -2,6 +2,8 @@ const cheerio = require("cheerio");
 const axios = require("axios");
 
 const BASE_URL = "https://www.saasworthy.com";
+
+// basic url for all categories
 async function getAllScraps() {
   try {
     const axiosResponse = await axios.request({
@@ -31,6 +33,7 @@ async function getAllScraps() {
   }
 }
 
+// third page scraping
 async function getDetailOverview(
   link = "https://www.saasworthy.com/product/postman"
 ) {
@@ -120,14 +123,35 @@ async function getDetailOverview(
       const description = $(element).find(".stry_review").text().trim();
       const imageUrl = $(element).find("img").attr("src");
 
-    //   console.log(`Rating: ${rating}`);
-    //   console.log(`Name: ${name}`);
-    //   console.log(`Description: ${description}`);
-    //   console.log(`Image URL: ${imageUrl}`);
-      integrations.push({name,description,imageUrl,rating});
+      //   console.log(`Rating: ${rating}`);
+      //   console.log(`Name: ${name}`);
+      //   console.log(`Description: ${description}`);
+      //   console.log(`Image URL: ${imageUrl}`);
+      integrations.push({ name, description, imageUrl, rating });
     });
     deepscrap["integrations"] = integrations;
-    console.log(deepscrap);
+    // cost scraping from here
+    const plans = [];
+    const slider = $(".slider.pricing-slider");
+
+    // loop through each plan div and extract its title and features
+    slider.find(".plans-div").each(function (i, el) {
+      const title = $(this).find(".plan-title").text().trim();
+      const features = [];
+
+      // loop through each feature and add it to the features array
+      $(this)
+        .find(".pln-desc li")
+        .each(function (j, li) {
+          features.push($(this).text().trim());
+        });
+      const price = $(this).find(".pln-price-yearly").text().trim();
+      //   console.log(title," ",price);
+      //   console.log(features);
+      plans.push({ title, price, features: [...features] });
+    });
+    deepscrap["pricing"] = plans;
+    // console.log(deepscrap);
     return deepscrap;
   } catch (error) {
     console.log(error);
@@ -135,6 +159,7 @@ async function getDetailOverview(
   }
 }
 
+// second page scraping
 //https://www.saasworthy.com/list/analytics-platforms?page=2
 async function getDetails(
   link = "https://www.saasworthy.com/list/analytics-platforms",
@@ -179,10 +204,10 @@ async function getDetails(
           ?.split(":")[1]
           ?.trim();
         const productLink = $(elem).find(" a.compareText");
-        const productDetail = $(productLink[0]).attr("href").trim();
+        const productDetail = $(productLink[0])?.attr("href")?.trim();
         // console.log(`${productName} \n ${productDescription} \n ${productUrl} \n ${ratingsCount}`);
-        let detailedProduct = {}
-        if (productDetail.includes("/product/")) {
+        let detailedProduct = {};
+        if (productDetail && productDetail.includes("/product/")) {
           console.log(productDetail);
           detailedProduct = await getDetailOverview(
             `${BASE_URL}${productDetail}`
@@ -194,7 +219,7 @@ async function getDetails(
           productUrl,
           ratingsCount,
           starRating,
-          detailedProduct
+          detailedProduct,
         };
         softwares.push(resultObj);
       });
@@ -225,14 +250,25 @@ async function getDetailCategorySoftware() {
       const detailCrawling = await getDetails(links[i].link, 1);
       results.links[i].details = detailCrawling;
     }
-    // console.log(results);
+    // Convert object to JSON string
+    const jsonString = JSON.stringify(results);
+    // Write JSON string to file
+    fs.writeFile("myObject.json", jsonString, (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      console.log("JSON file created successfully");
+    });
+    console.log(results);
   } catch (error) {
     console.log(error);
   }
 }
-// getDetailCategorySoftware();
+
+getDetailCategorySoftware();
 // const res = getDetails().then((res) => {
 //   console.log(new Set(res));
 // });
 // getAllScraps();
-getDetailOverview();
+// getDetailOverview();
